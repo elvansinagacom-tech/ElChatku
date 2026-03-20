@@ -3190,7 +3190,7 @@ try {
     throw new Error('Library Supabase gagal dimuat dari CDN.');
   }
   const { createClient } = supabase;
-  supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON);
+  supabaseClient = createClient(, );
 } catch(e) {
   // Tampilkan pesan error langsung di layar jika Supabase gagal
   document.addEventListener('DOMContentLoaded', function() {
