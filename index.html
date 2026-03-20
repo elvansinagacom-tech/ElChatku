@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ElChat</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #0d0d0f;
+      color: #f0f0f4;
+      font-family: sans-serif;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .card {
+      background: #1e1e22;
+      border-radius: 20px;
+      padding: 32px 24px;
+      width: 100%;
+      max-width: 400px;
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+    h1 {
+      text-align: center;
+      font-size: 28px;
+      margin-bottom: 8px;
+      background: linear-gradient(135deg, #7C6FFF, #FF6B9D);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    p.sub {
+      text-align: center;
+      color: #9494a8;
+      font-size: 13px;
+      margin-bottom: 24px;
+    }
+    .tabs {
+      display: flex;
+      background: #161618;
+      border-radius: 12px;
+      padding: 4px;
+      margin-bottom: 24px;
+    }
+    .tab {
+      flex: 1;
+      padding: 10px;
+      border: none;
+      background: none;
+      color: #9494a8;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      border-radius: 9px;
+      transition: all 0.2s;
+    }
+    .tab.active {
+      background: #2a2a30;
+      color: #f0f0f4;
+    }
+    .panel { display: none; flex-direction: column; gap: 14px; }
+    .panel.active { display: flex; }
+    label {
+      font-size: 11px;
+      font-weight: 700;
+      color: #9494a8;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      margin-bottom: 4px;
+      display: block;
+    }
+    input {
+      width: 100%;
+      padding: 12px 14px;
+      background: #161618;
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 12px;
+      color: #f0f0f4;
+      font-size: 15px;
+      outline: none;
+      -webkit-appearance: none;
+    }
+    input:focus { border-color: #7C6FFF; }
+    .btn {
+      width: 100%;
+      padding: 14px;
+      border: none;
+      border-radius: 12px;
+      background: linear-gradient(135deg, #7C6FFF, #FF6B9D);
+      color: white;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      margin-top: 4px;
+    }
+    .btn:active { opacity: 0.85; }
+    .msg {
+      text-align: center;
+      font-size: 13px;
+      padding: 10px;
+      border-radius: 8px;
+      display: none;
+    }
+    .msg.error   { background: rgba(239,83,80,0.15);  color: #ef5350; display: block; }
+    .msg.success { background: rgba(102,187,106,0.15); color: #66bb6a; display: block; }
+    #status {
+      text-align: center;
+      font-size: 12px;
+      color: #9494a8;
+      margin-top: 16px;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>ElChat</h1>
+    <p class="sub">Encrypted. Personal. Yours.</p>
+
+    <div class="tabs">
+      <button class="tab active" onclick="switchTab('login')">Masuk</button>
+      <button class="tab"        onclick="switchTab('register')">Daftar</button>
+    </div>
+
+    <!-- LOGIN -->
+    <div class="panel active" id="panel-login">
+      <div>
+        <label>Email</label>
+        <input type="email" id="login-email" placeholder="nama@email.com" />
+      </div>
+      <div>
+        <label>Kata Sandi</label>
+        <input type="password" id="login-password" placeholder="••••••••" />
+      </div>
+      <div class="msg" id="login-msg"></div>
+      <button class="btn" onclick="doLogin()">Masuk</button>
+    </div>
+
+    <!-- REGISTER -->
+    <div class="panel" id="panel-register">
+      <div>
+        <label>Email</label>
+        <input type="email" id="reg-email" placeholder="nama@email.com" />
+      </div>
+      <div>
+        <label>Username</label>
+        <input type="text" id="reg-username" placeholder="username" />
+      </div>
+      <div>
+        <label>Kata Sandi (min 7 karakter + angka)</label>
+        <input type="password" id="reg-password" placeholder="••••••••" />
+      </div>
+      <div class="msg" id="reg-msg"></div>
+      <button class="btn" onclick="doRegister()">Buat Akun</button>
+    </div>
+
+    <div id="status">Menghubungkan ke server...</div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.3/dist/umd/supabase.js"></script>
+  <script>
+    var SUPABASE_URL  = 'https://sxdegbjhumiurcrfcanh.supabase.co';
+    var SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN4ZGVnYmpodW1pdXJjcmZjYW5oIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM5MTY1OTQsImV4cCI6MjA4OTQ5MjU5NH0.491zxrUqtwlKPFN2mXo5apduQ0lNptwrc8dXBlILTEQ';
+    var db;
+
+    window.addEventListener('load', function() {
+      var statusEl = document.getElementById('status');
+      try {
+        if (typeof supabase === 'undefined') throw new Error('Supabase gagal dimuat');
+        db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+        statusEl.textContent = '✅ Terhubung ke server';
+        statusEl.style.color = '#66bb6a';
+      } catch(e) {
+        statusEl.textContent = '❌ ' + e.message;
+        statusEl.style.color = '#ef5350';
+      }
+    });
+
+    function switchTab(tab) {
+      document.getElementById('panel-login').classList.toggle('active', tab === 'login');
+      document.getElementById('panel-register').classList.toggle('active', tab === 'register');
+      document.querySelectorAll('.tab').forEach(function(t, i) {
+        t.classList.toggle('active', (i === 0 && tab === 'login') || (i === 1 && tab === 'register'));
+      });
+    }
+
+    function showMsg(id, text, type) {
+      var el = document.getElementById(id);
+      el.textContent = text;
+      el.className = 'msg ' + type;
+    }
+
+    async function doLogin() {
+      var email    = document.getElementById('login-email').value.trim();
+      var password = document.getElementById('login-password').value;
+      if (!email || !password) { showMsg('login-msg', 'Email dan kata sandi wajib diisi.', 'error'); return; }
+      if (!db) { showMsg('login-msg', 'Belum terhubung ke server.', 'error'); return; }
+
+      showMsg('login-msg', 'Memproses...', '');
+      try {
+        var result = await db.auth.signInWithPassword({ email: email, password: password });
+        if (result.error) throw result.error;
+        showMsg('login-msg', '✅ Login berhasil! Selamat datang.', 'success');
+        setTimeout(function() { window.location.href = '/app'; }, 1500);
+      } catch(e) {
+        showMsg('login-msg', '❌ ' + e.message, 'error');
+      }
+    }
+
+    async function doRegister() {
+      var email    = document.getElementById('reg-email').value.trim();
+      var username = document.getElementById('reg-username').value.trim().toLowerCase();
+      var password = document.getElementById('reg-password').value;
+
+      if (!email || !username || !password) { showMsg('reg-msg', 'Semua kolom wajib diisi.', 'error'); return; }
+      if (password.length < 7)              { showMsg('reg-msg', 'Kata sandi minimal 7 karakter.', 'error'); return; }
+      if (!/\d/.test(password))             { showMsg('reg-msg', 'Kata sandi harus mengandung angka.', 'error'); return; }
+      if (!db) { showMsg('reg-msg', 'Belum terhubung ke server.', 'error'); return; }
+
+      showMsg('reg-msg', 'Mendaftarkan akun...', '');
+      try {
+        var result = await db.auth.signUp({ email: email, password: password, options: { data: { username: username } } });
+        if (result.error) throw result.error;
+
+        var userId = result.data.user.id;
+        var profile = await db.from('profiles').insert([{ id: userId, username: username, email: email, role: 'user' }]);
+        if (profile.error && profile.error.code !== '23505') throw profile.error;
+
+        showMsg('reg-msg', '✅ Akun berhasil dibuat! Silakan login.', 'success');
+        setTimeout(function() { switchTab('login'); document.getElementById('login-email').value = email; }, 2000);
+      } catch(e) {
+        showMsg('reg-msg', '❌ ' + e.message, 'error');
+      }
+    }
+  </script>
+</body>
+</html>
